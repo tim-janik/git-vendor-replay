@@ -4,6 +4,9 @@ set -Eeuo pipefail #-x
 die() { echo "${BASH_SOURCE[0]##*/}: **ERROR**: ${*:-aborting}" >&2; exit 127 ; }
 ABSPATHSCRIPT=`readlink -f "$0"`	# Resolve symlinks to find installdir
 
+# == Dependency checks ==
+source "${ABSPATHSCRIPT%/*}"/preflight.sh
+
 # == Usage ==
 help()
 {
@@ -54,7 +57,6 @@ VTAG=$(sanitize "$VTAG")
 test -n "$BRANCH" || BRANCH="$VENDORDIR"
 BRANCH=$(sanitize "$BRANCH")
 test -r .git || die 'Missing .git, need to be run from repository root'
-command -v git-filter-repo >/dev/null 2>&1 || die "Missing 'git-filter-repo' from PATH"
 jj --ignore-working-copy root >/dev/null 2>&1 && WITHJJ=true || WITHJJ=false
 CURRENTHEAD=$(git rev-parse --verify HEAD)
 
