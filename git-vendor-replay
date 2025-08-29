@@ -39,6 +39,7 @@ BRANCH=
 while test $# -ne 0 ; do
   case "$1" in \
     -h|--help)  help; exit 0 ;;
+    --version)	echo "${BASH_SOURCE[0]##*/} `"${ABSPATHSCRIPT%/*}"/version.sh`"; exit ;;
     -b)		shift; BRANCH="$1" ;;
     -t)		shift; VTAG="$1" ;;
     -x)		LOGFILE=/dev/stderr && set -x ;;
