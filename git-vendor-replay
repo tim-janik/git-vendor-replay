@@ -110,10 +110,10 @@ fi
 echo ">> Creating import of: $IMPORTSRC" # into $CIMPORT
 ( set -x && cd "$TEMPD"/hist
   git checkout -b "$CIMPORT" "$CURRENTHEAD"
-  git rm -f -r --quiet -- "$VENDORDIR" || :
+  git rm -f -r -- "$VENDORDIR" || :
   mkdir -p "$VENDORDIR" # ensure dir with parents exists
   rm -rf "$VENDORDIR"   # leave only parent dir
-  cp -a "$IMPORTSRC" "$VENDORDIR"
+  cp -RPp "$IMPORTSRC" "$VENDORDIR"
   git add -f -- "$VENDORDIR"
   git status
 ) >> "$LOGFILE" 2>&1
@@ -157,3 +157,5 @@ else
   echo -n ">> New branch: " && git -P log -1 --oneline "$BRANCH"
   $WITHJJ && jj --no-pager status # make CIMPORT known to jj
 fi
+
+true # final exit status
