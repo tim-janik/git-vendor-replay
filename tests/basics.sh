@@ -125,6 +125,29 @@ __SNAPSHOT_EOF__
 	 )
   assert_snapshot SNAP1 "$TEMPD/snapshot.log" "$ABSPATHSCRIPT"
 
+  echo && echo "== TEST: Test second imoprt with replay"
+
+  repo_rm "third_party/vendor-a/v-junk.txt: remove" third_party/vendor-a/v-junk.txt
+  repo_add "vendor.info: extend" third_party/vendor-a/vendor.info "" "Altered by downstream."
+  repo_add "README: chore" README "" "Some license."
+  git_log --all --stat > $TEMPD/snapshot.log
+  SNAP2=$(cat << '__SNAPSHOT_EOF__'
+__SNAPSHOT_EOF__
+	 )
+  assert_snapshot SNAP2 "$TEMPD/snapshot.log" "$ABSPATHSCRIPT"
+
+  vendor_add "README.txt" "" "VERSION: 2"
+  vendor_add "vcontext.md" "# Context for projects at Vendor"
+  ( cd "$REPO" && $TESTDIR/../git-vendor-replay --rebase "third_party/vendor-a" "$VENDOR" -b wip/VendorA -t VendorA-2 )
+  ( $GIT switch master
+    $GIT merge --no-ff -m"Merge wip/VendorA v2" HEAD wip/VendorA ) >> "$LOGFILE" 2>&1
+
+  git_log --all --stat > $TEMPD/snapshot.log
+  SNAP3=$(cat << '__SNAPSHOT_EOF__'
+__SNAPSHOT_EOF__
+	 )
+  assert_snapshot SNAP3 "$TEMPD/snapshot.log" "$ABSPATHSCRIPT"
+
   $ISHELL && (cd $REPO/ && bash -i )
 
   true
