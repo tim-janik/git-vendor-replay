@@ -14,6 +14,8 @@ help()
 	<vendor-dir> since the last import to <vendor-dir>. A new commit is created,
 	that is a pristine import of <import-src> into <vendor-dir>. Output is a git
 	rebase command to start rebasing <vendor-branch> onto the new commit.
+	In a colocated Jujutsu repository, the \`jj rebase\` command is run to replay
+	the changes from <vendor-branch> onto the new import commit.
 
 	Options:
 	  -h, --help         Display this help and exit
@@ -52,9 +54,14 @@ test -n "$BRANCH" || BRANCH="$VENDORDIR"
 BRANCH=$(sanitize "$BRANCH")
 test -r .git || die 'Missing .git, need to be run from repository root'
 command -v git-filter-repo >/dev/null 2>&1 || die "Missing 'git-filter-repo' from PATH"
+jj --ignore-working-copy root >/dev/null 2>&1 && WITHJJ=true || WITHJJ=false
 CURRENTHEAD=$(git rev-parse --verify HEAD)
 
 # == failsafe ==
+$WITHJJ && {
+  echo ">> Command to undo script effects:"
+  echo "     jj op restore $(jj op log -n1 --no-graph -T 'self.id().short()')"
+}
 git rev-parse --verify "$BRANCH" > /dev/null 2>&1 && {
   echo ">> WARNING: discarding existing branch: $BRANCH"
   echo -n "    " && git -P log -1 --oneline "$BRANCH"
@@ -128,10 +135,22 @@ if test -r "$TEMPD/need-replay" ; then
   (
     git fetch --force "$TEMPD"/hist "$BRANCH":"$BRANCH"
   ) >> "$LOGFILE" 2>&1
-  echo ">> Command to rebase extracted vendor-dir patches:"
-  echo "   git rebase --interactive --onto '$CIMPORT' '$LASTIMPORT' '$BRANCH'"
+  if $WITHJJ ; then
+    (
+      git branch __"$CIMPORT" "$CIMPORT"
+      jj --no-pager bookmark delete __"$CIMPORT" # make CIMPORT known to jj
+    ) >> "$LOGFILE" 2>&1 ||
+      die "Failed to fetch commit into jj repo: $CIMPORT"
+    ( set -x
+      jj --no-pager rebase --destination $CIMPORT --branch "\"$BRANCH\""
+    )
+  else
+    echo ">> Command to rebase extracted vendor-dir patches:"
+    echo "   git rebase --interactive --onto '$CIMPORT' '$LASTIMPORT' '$BRANCH'"
+  fi
 else
   git branch -f "$BRANCH" "$CIMPORT"
   echo ">> No vendor-dir patches needing rebase"
   echo -n ">> New branch: " && git -P log -1 --oneline "$BRANCH"
+  $WITHJJ && jj --no-pager status # make CIMPORT known to jj
 fi
