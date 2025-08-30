@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+set -Eeuo pipefail #-x
+die() { echo "${BASH_SOURCE[0]##*/}: **ERROR**: ${*:-aborting}" >&2; exit 127 ; }
+ABSPATHSCRIPT=`readlink -f "$0"`	# Resolve symlinks to find installdir
+
+# == Usage ==
+help()
+{
+  cat <<-__EOF__
+	Usage: ${0##*/} <vendor-dir> <import-src> -t <version-tag> -b <vendor-branch>
+
+	This command creates a new branch <vendor-branch>, containing all changes to
+	<vendor-dir> since the last import to <vendor-dir>. A new commit is created,
+	that is a pristine import of <import-src> into <vendor-dir>. Output is a git
+	rebase command to start rebasing <vendor-branch> onto the new commit.
+
+	Options:
+	  -h, --help         Display this help and exit
+	  -t <version-tag>   Version tag added to the commit message
+	  -b <vendor-branch> Branch name, defaults to <vendor-dir>
+	  -x                 Show shell commands
+__EOF__
+}
+sanitize() # sanitize branch or tag name
+(
+  printf "%s" "$@" |
+    sed -r 's/[^a-zA-Z0-9._-]/-/g; s/^[.-]*//; s/[.-]*$//;'
+)
+
+# == Options ==
+TEMPD="`mktemp -d`" && trap "rm -rf '$TEMPD'" EXIT || die "mktemp failed"
+LOGFILE="$TEMPD/out.log"
+CLIARGS=()
+VTAG=
+BRANCH=
+while test $# -ne 0 ; do
+  case "$1" in \
+    -h|--help)  help; exit 0 ;;
+    -b)		shift; BRANCH="$1" ;;
+    -t)		shift; VTAG="$1" ;;
+    -x)		LOGFILE=/dev/stderr && set -x ;;
+    *)		CLIARGS+=( "$1" ) ;;
+  esac
+  shift
+done
+test "${#CLIARGS[@]}" -eq 2 || { help; die "Need exactly 2 args"; }
+VENDORDIR="${CLIARGS[0]%/}" IMPORTSRC="${CLIARGS[1]%/}"
+test -n "$VTAG" || VTAG="$IMPORTSRC"
+VTAG=$(sanitize "$VTAG")
+test -n "$BRANCH" || BRANCH="$VENDORDIR"
+BRANCH=$(sanitize "$BRANCH")
+test -r .git || die 'Missing .git, need to be run from repository root'
+command -v git-filter-repo >/dev/null 2>&1 || die "Missing 'git-filter-repo' from PATH"
+CURRENTHEAD=$(git rev-parse --verify HEAD)
+
+# == failsafe ==
+git rev-parse --verify "$BRANCH" > /dev/null 2>&1 && {
+  echo ">> WARNING: discarding existing branch: $BRANCH"
+  echo -n "    " && git -P log -1 --oneline "$BRANCH"
+}
+
+# == Find last import ==
+echo ">> Looking for the last import of: Vendor-dir: $VENDORDIR"
+LASTIMPORT=$(git log -1 --grep="^Vendor-dir: $VENDORDIR\$" --pretty=format:'%H%n' HEAD || :)
+test -n "$LASTIMPORT" && {
+  echo -n ">> Found: " && git -P log -1 --oneline "$LASTIMPORT"
+}
+
+# == Temp Clone ==
+CIMPORT="__$BRANCH""__@_$VTAG""_"
+( set -x
+  git clone . "$TEMPD"/hist --shared
+  cd "$TEMPD"/hist
+  git -c advice.detachedHead=false checkout $(git rev-parse --verify HEAD) # avoid worktree blocking branch deletion
+  git branch -D -- "$CIMPORT" "_$BRANCH" "$BRANCH" || :
+) >> "$LOGFILE" 2>&1
+
+# == Extract Patches ==
+if test -n "$LASTIMPORT" ; then
+  echo ">> Extracting vendor-dir patches..." # into $BRANCH
+  ( set -x
+    cd "$TEMPD"/hist
+    git checkout -b "_$BRANCH" "$CURRENTHEAD"
+    # WIP: --replace-text "$TEMPD"/rm-changeid.txt ; echo 'regex:^change-id .*\n' > "$TEMPD"/rm-changeid.txt  # remove change-id
+    # filter-repo extracts changes to $VENDORDIR and prunes the rest
+    git filter-repo --force \
+	--prune-empty always --prune-degenerate always \
+	--path "$VENDORDIR" --refs "$LASTIMPORT".."_$BRANCH"
+    # flatten commits chronologically to get rid of merges
+    git checkout -b "$BRANCH" "$LASTIMPORT"
+    git log --no-merges --reverse --format=%H "$LASTIMPORT.._$BRANCH" > "$TEMPD/cherries"
+    xargs -r git cherry-pick < "$TEMPD/cherries"
+    test $(git rev-parse "$BRANCH") == "$LASTIMPORT" ||
+      echo need-replay > "$TEMPD/need-replay"
+  ) >> "$LOGFILE" 2>&1
+fi
+
+# == Create new import commit ==
+echo ">> Creating import of: $IMPORTSRC" # into $CIMPORT
+( set -x && cd "$TEMPD"/hist
+  git checkout -b "$CIMPORT" "$CURRENTHEAD"
+  git rm -f -r --quiet -- "$VENDORDIR" || :
+  mkdir -p "$VENDORDIR" # ensure dir with parents exists
+  rm -rf "$VENDORDIR"   # leave only parent dir
+  cp -a "$IMPORTSRC" "$VENDORDIR"
+  git add -f -- "$VENDORDIR"
+  git status
+) >> "$LOGFILE" 2>&1
+if test -n "$LASTIMPORT" ; then
+  ( set -x && cd "$TEMPD"/hist
+    ! git -P diff --quiet "$LASTIMPORT" -- "$VENDORDIR"
+  ) >> "$LOGFILE" 2>&1 ||
+    die "No updates to commit from: $IMPORTSRC"
+fi
+( set -x && cd "$TEMPD"/hist
+  git commit -m "$VENDORDIR: Vendor-dir import of $VTAG"$'\n\n'"Vendor-dir: $VENDORDIR" -- "$VENDORDIR"
+) >> "$LOGFILE" 2>&1 ||
+  die "Failed to commit any updates from: $IMPORTSRC"
+(
+  git fetch --force "$TEMPD"/hist "$CIMPORT" # :"$CIMPORT"
+) >> "$LOGFILE" 2>&1
+CIMPORT=$(git rev-parse FETCH_HEAD)
+echo -n ">> New import: " && git -P log -1 --oneline "$CIMPORT"
+
+# == Replay commits via rebase ==
+if test -r "$TEMPD/need-replay" ; then
+  (
+    git fetch --force "$TEMPD"/hist "$BRANCH":"$BRANCH"
+  ) >> "$LOGFILE" 2>&1
+  echo ">> Command to rebase extracted vendor-dir patches:"
+  echo "   git rebase --interactive --onto '$CIMPORT' '$LASTIMPORT' '$BRANCH'"
+else
+  git branch -f "$BRANCH" "$CIMPORT"
+  echo ">> No vendor-dir patches needing rebase"
+  echo -n ">> New branch: " && git -P log -1 --oneline "$BRANCH"
+fi
