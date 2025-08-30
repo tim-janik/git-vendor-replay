@@ -107,6 +107,20 @@ test_import1()
 
   git_log --all --stat > $TEMPD/snapshot.log
   SNAP1=$(cat << '__SNAPSHOT_EOF__'
+*   john@example.com 2023-12-03 (HEAD -> master) Merge wip/VendorA v1
+|\  
+| * john@example.com 2023-12-03 (wip/VendorA) third_party/vendor-a: Vendor-dir import of VendorA-1
+|/  
+|    third_party/vendor-a/README.txt  | 3 +++
+|    third_party/vendor-a/v-junk.txt  | 1 +
+|    third_party/vendor-a/vendor.info | 1 +
+|    3 files changed, 5 insertions(+)
+* john@example.com 2023-11-25 README: updates
+|  README | 1 +
+|  1 file changed, 1 insertion(+)
+* john@example.com 2023-11-17 README: first commit
+   README | 3 +++
+   1 file changed, 3 insertions(+)
 __SNAPSHOT_EOF__
 	 )
   assert_snapshot SNAP1 "$TEMPD/snapshot.log" "$ABSPATHSCRIPT"
