@@ -83,7 +83,7 @@ END {
 __END_AWK__
 
 # == Verify ==
-! cmp -s "$INPUT.tmp.new" "$INPUT" &&
+cmp -s "$INPUT.tmp.new" "$INPUT" &&
   die "${INPUT##*/}: Marker replacement failed for: $MARKER"
 
 # == Replace ==
