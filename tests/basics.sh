@@ -8,8 +8,8 @@ TESTDIR=$(dirname "$ABSPATHSCRIPT")
 [[ " $* " =~ " -s " ]] && ISHELL=true || ISHELL=false
 [[ " $* " =~ " --force " ]] && FORCE=true || FORCE=false
 export TZ=UTC
-export GIT_AUTHOR_EMAIL="john@example.com"
-export GIT_AUTHOR_DATE='@1700220000'
+export GIT_AUTHOR_DATE='@1700220000' GIT_AUTHOR_EMAIL="john@example.com" GIT_AUTHOR_NAME="John E. Xample"
+export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL" GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
 export TEMPD=$(mktemp -d -t gvrtst.XXXXXX) &&
   trap "rm -rf $TEMPD" EXIT ||
     die "failed to create temp dir"
@@ -30,7 +30,7 @@ repo_add()
   git add -- "$FILE" >> "$LOGFILE" 2>&1
   git commit -m "$MSG" -- "$FILE" >> "$LOGFILE" 2>&1
   cd - >> "$LOGFILE" 2>&1
-  export GIT_AUTHOR_DATE="@$((${GIT_AUTHOR_DATE#@} + 8*86400))"
+  GIT_AUTHOR_DATE="@$((${GIT_AUTHOR_DATE#@} + 8*86400))" && export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"
 }
 repo_rm()
 {
@@ -39,7 +39,7 @@ repo_rm()
   git rm -f -- "$FILE" >> "$LOGFILE" 2>&1
   git commit -m "$MSG" -- "$FILE" >> "$LOGFILE" 2>&1
   cd - >> "$LOGFILE" 2>&1
-  export GIT_AUTHOR_DATE="@$((${GIT_AUTHOR_DATE#@} + 8*86400))"
+  GIT_AUTHOR_DATE="@$((${GIT_AUTHOR_DATE#@} + 8*86400))" && export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"
 }
 repo_init()
 {
@@ -99,7 +99,7 @@ test_import1()
   repo_init "import1"     # sets $REPO
   repo_add "README: updates" README "Some text."
   GIT="git -C $REPO"
-  git_log() { $GIT log --graph --pretty='%ae %as%d %s' "$@" | sed '/^[| ]*$/d'; }
+  git_log() { $GIT log --graph --pretty='%h %ae %as%d %s' "$@" | sed '/^[| ]*$/d'; }
   Head1=$($GIT rev-parse HEAD)
 
   ( cd "$REPO" && $TESTDIR/../git-vendor-replay "third_party/vendor-a" "$VENDOR" -b wip/VendorA -t VendorA-1 )
@@ -107,18 +107,18 @@ test_import1()
 
   git_log --all --stat > $TEMPD/snapshot.log
   SNAP1=$(cat << '__SNAPSHOT_EOF__'
-*   john@example.com 2023-12-03 (HEAD -> master) Merge wip/VendorA v1
+*   15f339e john@example.com 2023-12-03 (HEAD -> master) Merge wip/VendorA v1
 |\  
-| * john@example.com 2023-12-03 (wip/VendorA) third_party/vendor-a: Vendor-dir import of VendorA-1
+| * cbbf43d john@example.com 2023-12-03 (wip/VendorA) third_party/vendor-a: Vendor-dir import of VendorA-1
 |/  
 |    third_party/vendor-a/README.txt  | 3 +++
 |    third_party/vendor-a/v-junk.txt  | 1 +
 |    third_party/vendor-a/vendor.info | 1 +
 |    3 files changed, 5 insertions(+)
-* john@example.com 2023-11-25 README: updates
+* 153d5fd john@example.com 2023-11-25 README: updates
 |  README | 1 +
 |  1 file changed, 1 insertion(+)
-* john@example.com 2023-11-17 README: first commit
+* 79ce687 john@example.com 2023-11-17 README: first commit
    README | 3 +++
    1 file changed, 3 insertions(+)
 __SNAPSHOT_EOF__
