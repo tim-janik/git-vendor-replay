@@ -11,19 +11,24 @@ source "${ABSPATHSCRIPT%/*}"/preflight.sh
 help()
 {
   cat <<-__EOF__
-	Usage: ${0##*/} <vendor-dir> <import-src> -t <version-tag> -b <vendor-branch>
+	Usage: ${0##*/} [OPTIONS] <vendor-dir> <import-src>
 
 	This command creates a new branch <vendor-branch>, containing all changes to
 	<vendor-dir> since the last import to <vendor-dir>. A new commit is created,
-	that is a pristine import of <import-src> into <vendor-dir>. Output is a git
-	rebase command to start rebasing <vendor-branch> onto the new commit.
-	In a colocated Jujutsu repository, the \`jj rebase\` command is run to replay
-	the changes from <vendor-branch> onto the new import commit.
+	that is a pristine import of <import-src> into <vendor-dir>.
+	In a plain Git repository, it prints a git rebase command to replay changes
+	from <vendor-branch> onto the new import commit.
+	With --rebase or -i, it executes the rebase directly.
+	In a colocated Jujutsu repository, the \`jj rebase\` command is used instead.
 
 	Options:
 	  -h, --help         Display this help and exit
+	  --version          Print version and exit
 	  -t <version-tag>   Version tag added to the commit message
 	  -b <vendor-branch> Branch name, defaults to <vendor-dir>
+	  -i                 Run rebase interactively (git) or directly (jj)
+	  --rebase           Run rebase non-interactively (git) or directly (jj)
+	  --no-jj            Disable use of jj commands
 	  -x                 Show shell commands
 __EOF__
 }
