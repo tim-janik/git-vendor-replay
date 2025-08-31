@@ -132,6 +132,29 @@ __SNAPSHOT_EOF__
   repo_add "README: chore" README "" "Some license."
   git_log --all --stat > $TEMPD/snapshot.log
   SNAP2=$(cat << '__SNAPSHOT_EOF__'
+* 318a411 john@example.com 2023-12-19 (HEAD -> master) README: chore
+|  README | 2 ++
+|  1 file changed, 2 insertions(+)
+* 51999fe john@example.com 2023-12-11 vendor.info: extend
+|  third_party/vendor-a/vendor.info | 2 ++
+|  1 file changed, 2 insertions(+)
+* b100c29 john@example.com 2023-12-03 third_party/vendor-a/v-junk.txt: remove
+|  third_party/vendor-a/v-junk.txt | 1 -
+|  1 file changed, 1 deletion(-)
+*   15f339e john@example.com 2023-12-03 Merge wip/VendorA v1
+|\  
+| * cbbf43d john@example.com 2023-12-03 (wip/VendorA) third_party/vendor-a: Vendor-dir import of VendorA-1
+|/  
+|    third_party/vendor-a/README.txt  | 3 +++
+|    third_party/vendor-a/v-junk.txt  | 1 +
+|    third_party/vendor-a/vendor.info | 1 +
+|    3 files changed, 5 insertions(+)
+* 153d5fd john@example.com 2023-11-25 README: updates
+|  README | 1 +
+|  1 file changed, 1 insertion(+)
+* 79ce687 john@example.com 2023-11-17 README: first commit
+   README | 3 +++
+   1 file changed, 3 insertions(+)
 __SNAPSHOT_EOF__
 	 )
   assert_snapshot SNAP2 "$TEMPD/snapshot.log" "$ABSPATHSCRIPT"
@@ -144,6 +167,44 @@ __SNAPSHOT_EOF__
 
   git_log --all --stat > $TEMPD/snapshot.log
   SNAP3=$(cat << '__SNAPSHOT_EOF__'
+*   d3983fb john@example.com 2023-12-27 (HEAD -> master) Merge wip/VendorA v2
+|\  
+| * bacd5c7 john@example.com 2023-12-11 (wip/VendorA) vendor.info: extend
+| |  third_party/vendor-a/vendor.info | 2 ++
+| |  1 file changed, 2 insertions(+)
+| * a5e1a0b john@example.com 2023-12-03 third_party/vendor-a/v-junk.txt: remove
+| |  third_party/vendor-a/v-junk.txt | 1 -
+| |  1 file changed, 1 deletion(-)
+| * 185bb39 john@example.com 2023-12-27 third_party/vendor-a: Vendor-dir import of VendorA-2
+|/  
+|    third_party/vendor-a/README.txt  | 2 ++
+|    third_party/vendor-a/v-junk.txt  | 1 +
+|    third_party/vendor-a/vcontext.md | 1 +
+|    third_party/vendor-a/vendor.info | 2 --
+|    4 files changed, 4 insertions(+), 2 deletions(-)
+* 318a411 john@example.com 2023-12-19 README: chore
+|  README | 2 ++
+|  1 file changed, 2 insertions(+)
+* 51999fe john@example.com 2023-12-11 vendor.info: extend
+|  third_party/vendor-a/vendor.info | 2 ++
+|  1 file changed, 2 insertions(+)
+* b100c29 john@example.com 2023-12-03 third_party/vendor-a/v-junk.txt: remove
+|  third_party/vendor-a/v-junk.txt | 1 -
+|  1 file changed, 1 deletion(-)
+*   15f339e john@example.com 2023-12-03 Merge wip/VendorA v1
+|\  
+| * cbbf43d john@example.com 2023-12-03 third_party/vendor-a: Vendor-dir import of VendorA-1
+|/  
+|    third_party/vendor-a/README.txt  | 3 +++
+|    third_party/vendor-a/v-junk.txt  | 1 +
+|    third_party/vendor-a/vendor.info | 1 +
+|    3 files changed, 5 insertions(+)
+* 153d5fd john@example.com 2023-11-25 README: updates
+|  README | 1 +
+|  1 file changed, 1 insertion(+)
+* 79ce687 john@example.com 2023-11-17 README: first commit
+   README | 3 +++
+   1 file changed, 3 insertions(+)
 __SNAPSHOT_EOF__
 	 )
   assert_snapshot SNAP3 "$TEMPD/snapshot.log" "$ABSPATHSCRIPT"
