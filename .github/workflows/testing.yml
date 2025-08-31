@@ -16,6 +16,8 @@ jobs:
     steps:
     - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
     - run: git fetch -f --tags	# Fix actions/checkout#290
+    - run: sudo apt update
+    - run: sudo apt install -y git-filter-repo
     - run: |
         curl -s -L https://github.com/martinvonz/jj/releases/download/v0.32.0/jj-v0.32.0-x86_64-unknown-linux-musl.tar.gz |
           sudo tar zxvf - -C /usr/local/bin/ ./jj
