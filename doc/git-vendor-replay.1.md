@@ -7,14 +7,20 @@ git-vendor-replay — create a pristine vendor import commit and prepare replay 
 
 # SYNOPSIS
 
-**git-vendor-replay** \[**-t** *version-tag*] \[**-b** *vendor-branch*] \[**OPTIONS**] *vendor-dir* *import-src*
+**git-vendor-replay** [**OPTIONS**] [**--rebase** | **-i**] *<vendor-dir>* *<import-src>*
 
 
 # DESCRIPTION
 
-**git-vendor-replay** helps maintain code that is vendored into a Git repository under a dedicated directory. It creates a new commit that replaces *vendor-dir* with the contents of *import-src* (a pristine import). If local commits have modified files under *vendor-dir* since the last import, the command extracts those changes and prepares to replay them on top of the new import commit. In repositories colocated with Jujutsu (jj), the replay is executed via `jj rebase`. In plain Git repositories, a ready‐to‐run `git rebase` command is printed.
+**git-vendor-replay** helps maintain code that is vendored into a Git repository under a dedicated directory.
+It creates a new commit that replaces *vendor-dir* with the contents of *import-src* (a pristine import).
+If local commits have modified files under *vendor-dir* since the last import, the command extracts those changes and prepares to replay them on top of the new import commit.
+In repositories colocated with Jujutsu (jj), the replay is printed or executed via `jj rebase …`.
+In plain Git repositories, a ready-to-run `git rebase --onto …` command is printed, or executed directly if **--rebase** or **-i** is given.
 
-The command does not move `HEAD` and does not modify the working tree of the current repository. It operates through a temporary shared clone to assemble history, then fetches the new import commit (and, when necessary, a temporary branch containing the extracted changes) back into the current repository. The branch named by **-b** will be created or force‐updated to point at either the new import commit or the tip of the replayed changes, depending on whether local vendor changes exist.
+The command does not move `HEAD` and does not modify the working tree of the current repository.
+It operates through a temporary shared clone to assemble history, then fetches the new import commit (and, when necessary, a temporary branch containing the extracted changes) back into the current repository.
+The branch named by **-b** will be created or force‐updated to point at either the new import commit or the tip of the replayed changes, depending on whether local vendor changes exist.
 
 The last import is detected by scanning history for the most recent commit whose message contains an exact line of the form `Vendor-dir: <vendor-dir>`. Each import created by this tool includes that marker so that subsequent runs can locate it.
 
@@ -26,8 +32,20 @@ The last import is detected by scanning history for the most recent commit whose
 **-h**, **--help**
 : Print usage and exit.
 
+**-i**
+: Run `jj rebase` or `git rebase --interactive` in interactive mode.
+
+**--rebase**
+: Run `jj rebase` or `git rebase` non-interactively.
+
 **-t** *version-tag*
 : Text inserted into the new import commit subject as `Vendor-dir import of <version-tag>`. If omitted, the default is the literal value of *import-src*. The value is sanitized to yield a valid git tag name.
+
+**--version**
+: Print version and exit.
+
+**--no-jj**
+: Disable use of Jujutsu (`jj`) for replaying changes, even if it is available.
 
 **-x**
 : Enable shell tracing (`set -x`) and direct the script’s internal log to standard error.

@@ -11,19 +11,24 @@ source "${ABSPATHSCRIPT%/*}"/preflight.sh
 help()
 {
   cat <<-__EOF__
-	Usage: ${0##*/} <vendor-dir> <import-src> -t <version-tag> -b <vendor-branch>
+	Usage: ${0##*/} [OPTIONS] <vendor-dir> <import-src>
 
 	This command creates a new branch <vendor-branch>, containing all changes to
 	<vendor-dir> since the last import to <vendor-dir>. A new commit is created,
-	that is a pristine import of <import-src> into <vendor-dir>. Output is a git
-	rebase command to start rebasing <vendor-branch> onto the new commit.
-	In a colocated Jujutsu repository, the \`jj rebase\` command is run to replay
-	the changes from <vendor-branch> onto the new import commit.
+	that is a pristine import of <import-src> into <vendor-dir>.
+	In a plain Git repository, it prints a git rebase command to replay changes
+	from <vendor-branch> onto the new import commit.
+	With --rebase or -i, it executes the rebase directly.
+	In a colocated Jujutsu repository, the \`jj rebase\` command is used instead.
 
 	Options:
 	  -h, --help         Display this help and exit
+	  --version          Print version and exit
 	  -t <version-tag>   Version tag added to the commit message
 	  -b <vendor-branch> Branch name, defaults to <vendor-dir>
+	  -i                 Run rebase interactively (git) or directly (jj)
+	  --rebase           Run rebase non-interactively (git) or directly (jj)
+	  --no-jj            Disable use of jj commands
 	  -x                 Show shell commands
 __EOF__
 }
@@ -39,12 +44,17 @@ LOGFILE="$TEMPD/out.log"
 CLIARGS=()
 VTAG=
 BRANCH=
+REBASEOPT=
+WITHJJ=
 while test $# -ne 0 ; do
   case "$1" in \
     -h|--help)  help; exit 0 ;;
     --version)	echo "${BASH_SOURCE[0]##*/} `"${ABSPATHSCRIPT%/*}"/version.sh`"; exit ;;
     -b)		shift; BRANCH="$1" ;;
     -t)		shift; VTAG="$1" ;;
+    -i)		REBASEOPT=--interactive ;;
+    --rebase)	REBASEOPT=--empty=drop ;;
+    --no-jj)	WITHJJ=false ;;
     -x)		LOGFILE=/dev/stderr && set -x ;;
     *)		CLIARGS+=( "$1" ) ;;
   esac
@@ -57,7 +67,9 @@ VTAG=$(sanitize "$VTAG")
 test -n "$BRANCH" || BRANCH="$VENDORDIR"
 BRANCH=$(sanitize "$BRANCH" '/')
 test -r .git || die 'Missing .git, need to be run from repository root'
-jj --ignore-working-copy root >/dev/null 2>&1 && WITHJJ=true || WITHJJ=false
+test -z "$WITHJJ" && {
+  jj --ignore-working-copy root >/dev/null 2>&1 && WITHJJ=true || WITHJJ=false
+}
 CURRENTHEAD=$(git rev-parse --verify HEAD)
 
 # == failsafe ==
@@ -144,12 +156,22 @@ if test -r "$TEMPD/need-replay" ; then
       jj --no-pager bookmark delete __"$CIMPORT" # make CIMPORT known to jj
     ) >> "$LOGFILE" 2>&1 ||
       die "Failed to fetch commit into jj repo: $CIMPORT"
+  fi
+  if test -n "$REBASEOPT" && $WITHJJ ; then
     ( set -x
       jj --no-pager rebase --destination $CIMPORT --branch "\"$BRANCH\""
     )
-  else
+  elif test -n "$REBASEOPT" ; then # plain git
+    ( set -x
+      git rebase $REBASEOPT --onto "$CIMPORT" "$LASTIMPORT" "$BRANCH"
+    )
+  else # print command
     echo ">> Command to rebase extracted vendor-dir patches:"
-    echo "   git rebase --interactive --onto '$CIMPORT' '$LASTIMPORT' '$BRANCH'"
+    if $WITHJJ ; then
+      echo "   jj rebase --destination '$CIMPORT' --branch '\"$BRANCH\"'"
+    else # plain git
+      echo "   git rebase --interactive --onto '$CIMPORT' '$LASTIMPORT' '$BRANCH'"
+    fi
   fi
 else
   git branch -f "$BRANCH" "$CIMPORT"

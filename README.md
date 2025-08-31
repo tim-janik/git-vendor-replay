@@ -11,7 +11,8 @@ Running `git-vendor-replay` will carry out the following steps:
 - Locates the last import by scanning the Git history for a commit message line with exactly `Vendor-dir: <vendor-dir>`.
 - Extracts commits that touched `<vendor-dir>` since that last import (using `git filter-repo`) and flattens them in chronological order.
 - Creates a new commit that replaces `<vendor-dir>` with the contents of `<import-src>`. The commit contains a new `Vendor-dir: <vendor-dir>` line.
-- If Jujutsu (`jj`) is present in a colocated setup, runs `jj rebase` to replay your vendor changes onto the new import. Otherwise, prints a ready-to-run `git rebase --onto …` command.
+- In a colocated `jj` repository it prints a ready-to-run `jj rebase …` command, or a `git rebase --onto …` command otherwise.
+- Use `--rebase` to execute the rebase command directly, or `-i` to start an interactive rebase.
 - Updates (or creates) a dedicated branch that tracks the linearized vendor history.
 
 The current repository’s `HEAD` and working tree are **not** modified; all assembly happens in a separately fetched branch.
@@ -39,8 +40,11 @@ because `git subtree` preserves upstream history under a prefix and supports mer
 
 ## Usage
 
+See `man git-vendor-replay` for detailed option documentation.
+
 ```bash
-git-vendor-replay <vendor-dir> <import-src> \[-t <version-tag>] \[-b <vendor-branch>] \[-x]
+git-vendor-replay [OPTIONS] [--rebase | -i] <vendor-dir> <import-src>
+```
 
 # Example: Import upstream 2.4.1 into third_party/libfoo and prepare replay
 git-vendor-replay third_party/libfoo ../libfoo-2.4.1 -t v2.4.1 -b libfoo
