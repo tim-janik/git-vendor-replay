@@ -6,13 +6,27 @@ This tool creates a *pristine import* commit from an external source tree and th
 
 ## What it does
 
-- Locates the last import by scanning the Git history for a commit message line exactly `Vendor-dir: <vendor-dir>`.
-- Extracts commits that touched `<vendor-dir>` since that import (using `git filter-repo`) and flattens them in chronological order.
+Running `git-vendor-replay` will carry out the following steps:
+
+- Locates the last import by scanning the Git history for a commit message line with exactly `Vendor-dir: <vendor-dir>`.
+- Extracts commits that touched `<vendor-dir>` since that last import (using `git filter-repo`) and flattens them in chronological order.
 - Creates a new commit that replaces `<vendor-dir>` with the contents of `<import-src>`. The commit contains a new `Vendor-dir: <vendor-dir>` line.
 - If Jujutsu (`jj`) is present in a colocated setup, runs `jj rebase` to replay your vendor changes onto the new import. Otherwise, prints a ready-to-run `git rebase --onto …` command.
 - Updates (or creates) a dedicated branch that tracks the linearized vendor history.
 
 The current repository’s `HEAD` and working tree are **not** modified; all assembly happens in a separately fetched branch.
+
+### Intent
+
+The primary goal is to revisit every **downstream patch** after each new import, so you can drop fixes that upstream absorbed, rework temporary hacks, or rebase minimal deltas cleanly.
+The replay step makes this review explicit on every update.
+
+When (not) to use: `git-vendor-replay` deliberately creates **independent import commits**, it does **not** "connect" import ancestry,
+i.e. it does not make the previous import the parent of the new import.
+This keeps imports orthogonal and focuses the workflow on replaying and reevaluating downstream changes.
+
+If you prefer connected upstream history and are happy to **merge** new imports (especially when vendoring an entire Git repository), `git subtree` may be a better fit,
+because `git subtree` preserves upstream history under a prefix and supports merging upstream changes directly, instead of replaying local patches.
 
 
 ## Requirements
@@ -43,7 +57,7 @@ git-vendor-replay third_party/libfoo ../libfoo-2.4.1 -t v2.4.1 -b libfoo
 ## Install
 
 Run `make install`, optionally with `PREFIX=…`.
-If a single script wihtout manual page is needed, download a self-extracting shell archive from the release assets.
+If a single script without the manual page is sufficient, download the self-extracting shell archive from the release assets.
 
 
 ## Related Projects
@@ -60,13 +74,14 @@ https://github.com/thejoshwolfe/git-vendor?tab=readme-ov-file#git-vendor-vs-othe
 This tool `git-vendor-replay` aids the process described in the "manual copy" column:
 
 
-| | [git-vendor-replay (tim-janik)](https://github.com/tim-janik/git-vendor-replay) | manual copy |
-| --------- | ------ | --- |
-| just works for collaborators	 | ✔️  | ✔️  |
-| version-controlled config file | ❌ | ❌ |
-| push as maintainer             | ❌ | ❌ |
-| fully a git repo               | ❌ | ❌ |
-| file name based filtering      | ✔️  | ✔️  |
-| non-trivial patches            | ✔️  | ✔️  |
-| implementation                 | bash | manual |
-| stars on github                | aspiring | |
+| | `git subtree` | [git-vendor-replay (tim-janik)](https://github.com/tim-janik/git-vendor-replay) | manual copy |
+| --------- | ------ | ------ | --- |
+| just works for collaborators	 | ✔️  | ✔️  | ✔️  |
+| version-controlled config file | ❌ | ❌ | ❌ |
+| push as maintainer             | ✔️  | ❌ | ❌ |
+| fully a git repo               | ❌ | ❌ | ❌ |
+| file name based filtering      | ❌ | ✔️  | ✔️  |
+| non-trivial patches            | ❌ | ✔️  | ✔️  |
+| automatic downstream replay    | ❌ | ✔️  | ❌ |
+| implementation                 | builtin | bash | manual |
+| stars on github                | celebrity | aspiring | |
