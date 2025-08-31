@@ -40,6 +40,7 @@ CLIARGS=()
 VTAG=
 BRANCH=
 REBASEOPT=
+WITHJJ=
 while test $# -ne 0 ; do
   case "$1" in \
     -h|--help)  help; exit 0 ;;
@@ -48,6 +49,7 @@ while test $# -ne 0 ; do
     -t)		shift; VTAG="$1" ;;
     -i)		REBASEOPT=--interactive ;;
     --rebase)	REBASEOPT=--empty=drop ;;
+    --no-jj)	WITHJJ=false ;;
     -x)		LOGFILE=/dev/stderr && set -x ;;
     *)		CLIARGS+=( "$1" ) ;;
   esac
@@ -60,7 +62,9 @@ VTAG=$(sanitize "$VTAG")
 test -n "$BRANCH" || BRANCH="$VENDORDIR"
 BRANCH=$(sanitize "$BRANCH" '/')
 test -r .git || die 'Missing .git, need to be run from repository root'
-jj --ignore-working-copy root >/dev/null 2>&1 && WITHJJ=true || WITHJJ=false
+test -z "$WITHJJ" && {
+  jj --ignore-working-copy root >/dev/null 2>&1 && WITHJJ=true || WITHJJ=false
+}
 CURRENTHEAD=$(git rev-parse --verify HEAD)
 
 # == failsafe ==
