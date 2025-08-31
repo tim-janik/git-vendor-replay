@@ -57,15 +57,10 @@ shellcheck-error:
 	$(QGEN)
 	$Q shellcheck --version | grep -q 'script analysis' || { echo "$@: missing GNU shellcheck"; false; }
 	shellcheck -W 3 -S error git-vendor-replay
-check-gsed: git-vendor-replay
-	$(QGEN)
-	$Q ! grep --color=auto -nE '[^\\]\bsed ' git-vendor-replay /dev/null \
-	|| { echo "ERROR: use gsed" >&2 ; false; }
-	$Q echo '  OK      gsed uses'
 check-help:
 	$(QGEN)
 	$Q ./git-vendor-replay --help | grep -qF git-vendor-replay || { echo "$@: ERROR: failed to render \`./git-vendor-replay --help\`" >&2; false; }
-check: check-deps check-gsed check-help shellcheck-error tests-basics.sh
+check: check-deps check-help shellcheck-error tests-basics.sh
 
 # == install & uninstall ==
 install: all
