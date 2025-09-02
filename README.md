@@ -46,7 +46,7 @@ See `man git-vendor-replay` for detailed option documentation.
 git-vendor-replay [OPTIONS] [--rebase | -i] <vendor-dir> <import-src>
 
 # Example: Import upstream 2.4.1 into third_party/libfoo and prepare replay
-git-vendor-replay third_party/libfoo ../libfoo-2.4.1 -t v2.4.1 -b libfoo
+git-vendor-replay third_party/libfoo ../libfoo-2.4.1 -t 'Vendor-dir import of libfoo v2.4.1' -b libfoo
 ```
 
 
