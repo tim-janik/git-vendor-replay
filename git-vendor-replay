@@ -24,7 +24,7 @@ help()
 	Options:
 	  -h, --help         Display this help and exit
 	  --version          Print version and exit
-	  -t <version-tag>   Version tag added to the commit message
+	  -t <import-title   Title for the import commit message
 	  -b <vendor-branch> Branch name, defaults to <vendor-dir>
 	  -i                 Run rebase interactively (git) or directly (jj)
 	  --rebase           Run rebase non-interactively (git) or directly (jj)
@@ -42,7 +42,7 @@ sanitize() # sanitize branch or tag name: <name> [extrachars]
 TEMPD="`mktemp -d`" && trap "rm -rf '$TEMPD'" EXIT || die "mktemp failed"
 LOGFILE="$TEMPD/out.log"
 CLIARGS=()
-VTAG=
+ITITLE=
 BRANCH=
 REBASEOPT=
 WITHJJ=
@@ -51,7 +51,7 @@ while test $# -ne 0 ; do
     -h|--help)  help; exit 0 ;;
     --version)	echo "${BASH_SOURCE[0]##*/} `"${ABSPATHSCRIPT%/*}"/version.sh`"; exit ;;
     -b)		shift; BRANCH="$1" ;;
-    -t)		shift; VTAG="$1" ;;
+    -t)		shift; ITITLE="$1" ;;
     -i)		REBASEOPT=--interactive ;;
     --rebase)	REBASEOPT=--empty=drop ;;
     --no-jj)	WITHJJ=false ;;
@@ -62,8 +62,7 @@ while test $# -ne 0 ; do
 done
 test "${#CLIARGS[@]}" -eq 2 || { help; die "Need exactly 2 args"; }
 VENDORDIR="${CLIARGS[0]%/}" IMPORTSRC="${CLIARGS[1]%/}"
-test -n "$VTAG" || VTAG="$IMPORTSRC"
-VTAG=$(sanitize "$VTAG")
+test -n "$ITITLE" || ITITLE="Vendor-dir import of $IMPORTSRC"
 test -n "$BRANCH" || BRANCH="$VENDORDIR"
 BRANCH=$(sanitize "$BRANCH" '/')
 test -r .git || die 'Missing .git, need to be run from repository root'
@@ -90,7 +89,7 @@ test -n "$LASTIMPORT" && {
 }
 
 # == Temp Clone ==
-CIMPORT="__$BRANCH""__@_$VTAG""_"
+CIMPORT="__$BRANCH""__Vendor_dir_"
 ( set -x
   git clone . "$TEMPD"/hist --shared
   cd "$TEMPD"/hist
@@ -136,7 +135,7 @@ if test -n "$LASTIMPORT" ; then
     die "No updates to commit from: $IMPORTSRC"
 fi
 ( set -x && cd "$TEMPD"/hist
-  git commit -m "$VENDORDIR: Vendor-dir import of $VTAG"$'\n\n'"Vendor-dir: $VENDORDIR" -- "$VENDORDIR"
+  git commit -m "$VENDORDIR: $ITITLE"$'\n\n'"Vendor-dir: $VENDORDIR" -- "$VENDORDIR"
 ) >> "$LOGFILE" 2>&1 ||
   die "Failed to commit any updates from: $IMPORTSRC"
 (
