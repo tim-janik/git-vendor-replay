@@ -78,14 +78,14 @@ $WITHJJ && {
 }
 git rev-parse --verify "$BRANCH" > /dev/null 2>&1 && {
   echo ">> WARNING: discarding existing branch: $BRANCH"
-  echo -n "    " && git -P log -1 --oneline "$BRANCH"
+  echo -n "    " && git -P log -1 --oneline "$BRANCH" --
 }
 
 # == Find last import ==
 echo ">> Looking for the last import of: Vendor-dir: $VENDORDIR"
 LASTIMPORT=$(git log -1 --grep="^Vendor-dir: $VENDORDIR\$" --pretty=format:'%H%n' HEAD || :)
 test -n "$LASTIMPORT" && {
-  echo -n ">> Found: " && git -P log -1 --oneline "$LASTIMPORT"
+  echo -n ">> Found: " && git -P log -1 --oneline "$LASTIMPORT" --
 }
 
 # == Temp Clone ==
@@ -142,7 +142,7 @@ fi
   git fetch --force "$TEMPD"/hist "$CIMPORT" # :"$CIMPORT"
 ) >> "$LOGFILE" 2>&1
 CIMPORT=$(git rev-parse FETCH_HEAD)
-echo -n ">> New import: " && git -P log -1 --oneline "$CIMPORT"
+echo -n ">> New import: " && git -P log -1 --oneline "$CIMPORT" --
 
 # == Replay commits via rebase ==
 if test -r "$TEMPD/need-replay" ; then
@@ -175,7 +175,7 @@ if test -r "$TEMPD/need-replay" ; then
 else
   git branch -f "$BRANCH" "$CIMPORT"
   echo ">> No vendor-dir patches needing rebase"
-  echo -n ">> New branch: " && git -P log -1 --oneline "$BRANCH"
+  echo -n ">> New branch: " && git -P log -1 --oneline "$BRANCH" --
   $WITHJJ && jj --no-pager status # make CIMPORT known to jj
 fi
 
