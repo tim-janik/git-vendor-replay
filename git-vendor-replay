@@ -78,20 +78,19 @@ $WITHJJ && {
 }
 git rev-parse --verify "$BRANCH" > /dev/null 2>&1 && {
   echo ">> WARNING: discarding existing branch: $BRANCH"
-  echo -n "    " && git -P log -1 --oneline "$BRANCH"
+  echo -n "    " && git -P log -1 --oneline "$BRANCH" --
 }
 
 # == Find last import ==
 echo ">> Looking for the last import of: Vendor-dir: $VENDORDIR"
 LASTIMPORT=$(git log -1 --grep="^Vendor-dir: $VENDORDIR\$" --pretty=format:'%H%n' HEAD || :)
 test -n "$LASTIMPORT" && {
-  echo -n ">> Found: " && git -P log -1 --oneline "$LASTIMPORT"
+  echo -n ">> Found: " && git -P log -1 --oneline "$LASTIMPORT" --
 }
 
 # == Temp Clone ==
 CIMPORT="__$BRANCH""__Vendor_dir_"
-( set -x
-  git clone . "$TEMPD"/hist --shared
+( git clone . "$TEMPD"/hist --shared
   cd "$TEMPD"/hist
   git -c advice.detachedHead=false checkout $(git rev-parse --verify HEAD) # avoid worktree blocking branch deletion
   git branch -D -- "$CIMPORT" "_$BRANCH" "$BRANCH" || :
@@ -100,8 +99,7 @@ CIMPORT="__$BRANCH""__Vendor_dir_"
 # == Extract Patches ==
 if test -n "$LASTIMPORT" ; then
   echo ">> Extracting vendor-dir patches..." # into $BRANCH
-  ( set -x
-    cd "$TEMPD"/hist
+  ( cd "$TEMPD"/hist
     git checkout -b "_$BRANCH" "$CURRENTHEAD"
     # WIP: --replace-text "$TEMPD"/rm-changeid.txt ; echo 'regex:^change-id .*\n' > "$TEMPD"/rm-changeid.txt  # remove change-id
     # filter-repo extracts changes to $VENDORDIR and prunes the rest
@@ -119,22 +117,23 @@ fi
 
 # == Create new import commit ==
 echo ">> Creating import of: $IMPORTSRC" # into $CIMPORT
-( set -x && cd "$TEMPD"/hist
+( cd "$TEMPD"/hist
   git checkout -b "$CIMPORT" "$CURRENTHEAD"
   git rm -f -r -- "$VENDORDIR" || :
   mkdir -p "$VENDORDIR" # ensure dir with parents exists
   rm -rf "$VENDORDIR"   # leave only parent dir
   cp -RPp "$IMPORTSRC" "$VENDORDIR"
   git add -f -- "$VENDORDIR"
-  git status
+  [[ $- != *x* ]] ||
+    git -P status
 ) >> "$LOGFILE" 2>&1
 if test -n "$LASTIMPORT" ; then
-  ( set -x && cd "$TEMPD"/hist
+  ( cd "$TEMPD"/hist
     ! git -P diff --quiet "$LASTIMPORT" -- "$VENDORDIR"
   ) >> "$LOGFILE" 2>&1 ||
     die "No updates to commit from: $IMPORTSRC"
 fi
-( set -x && cd "$TEMPD"/hist
+( cd "$TEMPD"/hist
   git commit -m "$VENDORDIR: $ITITLE"$'\n\n'"Vendor-dir: $VENDORDIR" -- "$VENDORDIR"
 ) >> "$LOGFILE" 2>&1 ||
   die "Failed to commit any updates from: $IMPORTSRC"
@@ -142,7 +141,7 @@ fi
   git fetch --force "$TEMPD"/hist "$CIMPORT" # :"$CIMPORT"
 ) >> "$LOGFILE" 2>&1
 CIMPORT=$(git rev-parse FETCH_HEAD)
-echo -n ">> New import: " && git -P log -1 --oneline "$CIMPORT"
+echo -n ">> New import: " && git -P log -1 --oneline "$CIMPORT" --
 
 # == Replay commits via rebase ==
 if test -r "$TEMPD/need-replay" ; then
@@ -175,7 +174,7 @@ if test -r "$TEMPD/need-replay" ; then
 else
   git branch -f "$BRANCH" "$CIMPORT"
   echo ">> No vendor-dir patches needing rebase"
-  echo -n ">> New branch: " && git -P log -1 --oneline "$BRANCH"
+  echo -n ">> New branch: " && git -P log -1 --oneline "$BRANCH" --
   $WITHJJ && jj --no-pager status # make CIMPORT known to jj
 fi
 
