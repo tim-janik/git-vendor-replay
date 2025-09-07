@@ -38,8 +38,8 @@ The last import is detected by scanning history for the most recent commit whose
 **--rebase**
 : Run `jj rebase` or `git rebase` non-interactively.
 
-**-t** *version-tag*
-: Text inserted into the new import commit subject as `Vendor-dir import of <version-tag>`. If omitted, the default is the literal value of *import-src*. The value is sanitized to yield a valid git tag name.
+**-t** *import-title*
+: Text inserted into the new import commit subject. If omitted, it defaults to a message about importing *import-src*.
 
 **--version**
 : Print version and exit.
@@ -84,7 +84,7 @@ Other nonzero statuses may result from underlying Git, `git-filter-repo`, `cp`, 
 Create or update a vendored library under `third_party/libfoo`, using a checked-out upstream at `../libfoo-2.4.1`, record the version tag, and prepare to replay local patches on a dedicated branch:
 
 ```
-git-vendor-replay third_party/libfoo ../libfoo-2.4.1 -t v2.4.1 -b libfoo
+git-vendor-replay third_party/libfoo ../libfoo-2.4.1 -t 'Vendor-dir import of libfoo v2.4.1' -b libfoo
 ```
 
 In a Git-only repository with local vendor changes, run the printed `git rebase --interactive --onto …` command next to complete the replay.
